@@ -1,1 +1,10 @@
-matplotlib, thymeboost, prophet, sktime, requests, pymysql, python-dotenv, wandb, plotly, streamlit
+matplotlib
+thymeboost
+prophet
+sktime
+requests
+pymysql
+python-dotenv
+wandb
+plotly
+streamlit
