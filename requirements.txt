@@ -1,4 +1,4 @@
-matplotlib
+matplotlib==3.7.2
 thymeboost
 prophet
 sktime
