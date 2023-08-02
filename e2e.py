@@ -9,7 +9,8 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 import logger, variables
 # Database library
-import pymysql
+import mysql.connector as connection
+from sqlalchemy import create_engine
 # Model libraries
 from prophet import Prophet
 from ThymeBoost import ThymeBoost as tb
@@ -123,52 +124,32 @@ def transform(response):
 # Upload latest data to online database
 def upload_fetch_data(df):
 
-    Logger.info('Creating variables to be uploaded to online database.')
-    # Create variables that will be uploaded
-    period = df.iloc[0]['period']
-    heavy_sour = int(df['HeavySour'].values)
-    heavy_sweet = int(df['HeavySweet'].values)
-    light_sour = int(df['LightSour'].values)
-    light_sweet =  int(df['LightSweet'].values)
-    medium = int(df['Medium'].values)
-    total = int(df['Total'].values)
-    extraction_date = df.iloc[0]['extraction_date']
-
     Logger.info('Trying to connect to online database.')
     try:
         # Connect to the database
-        connection = pymysql.connect(host=DB_HOSTNAME,
-                                user=DB_USERNAME,
-                                password=DB_PASSWORD,
-                                db=DB_DATABASE, 
-                                autocommit=True)
+        engine = create_engine("mysql+pymysql://{user}:{pw}@{host}/{db}".format(host=DB_HOSTNAME, db=DB_DATABASE, user=DB_USERNAME, pw=DB_PASSWORD))
         
-        # Create cursor
-        cursor = connection.cursor()
+        Logger.info('Logged in to the online database.')
+
             
         # Insert latest record
         Logger.info('Inserting latest data to the online database.')
-        # Create a new record
-        sql = "INSERT INTO crude_oil_imports (period, heavy_sour, heavy_sweet, light_sour, light_sweet, medium, total, extraction_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-        # Execute the query
-        cursor.execute(sql, (period, heavy_sour, heavy_sweet, light_sour, light_sweet, medium, total, extraction_date))
+        df.rename(columns={'HeavySour':'heavy_sour', 'HeavySweet':'heavy_sweet', 'LightSour':'light_sour', 'LightSweet':'light_sweet', 'Medium':'medium', 'Total':'total'}, inplace=True)
+        # Insert into DB
+        df.to_sql('crude_oil_imports', con=engine, if_exists='append', index=False)
         Logger.info('Data uploaded to database.')
             
         # Fetch all data
         Logger.info('Fetching all data from database.')
-        cursor.execute("SELECT * FROM crude_oil_imports")
-        all_data = cursor.fetchall()  # Data is now in the form of a list
+        retrieve = "SELECT * FROM crude_oil_imports"
+        all_data = pd.read_sql(retrieve,engine)  # Data is now in a dataframe
         Logger.info('Data retrieved and ready for use.')
 
     except:
         Logger.exception('Could not log in to online database.')
 
-    # Transform list of data retrieved from database to dataframe
-    Logger.info('Transforming data to dataframe.')
-    all_data = pd.DataFrame(all_data, columns=['period','heavy_sour', 'heavy_sweet', 'light_sour', 'light_sweet','medium', 'total', 'extraction_date'])
     # Drop duplicates
-    all_data.drop_duplicates( subset=['period'], inplace=True)
-
+    all_data.drop_duplicates(subset=['period'], inplace=True)
 
     Logger.info('Data uploading and retrieval completed.')
 
@@ -362,33 +343,24 @@ def model_training(df):
     return predicted_df
 
 
-# STEP 6: Plotting
-# Create the plotting function for plot to be displayed on streamlit webapp.
-def plot(previous_df, predictions_df, column):
+# STEP 6: Upload predictions
+def predictions_upload(df):
 
-    # Get standard deviation of the predictions
-    std = predictions_df[column].std()
+    try:
+        # Connect to the database
+        # Connect to the database
+        engine = create_engine("mysql+pymysql://{user}:{pw}@{host}/{db}".format(host=DB_HOSTNAME, db=DB_DATABASE, user=DB_USERNAME, pw=DB_PASSWORD))
+        
+        
+        # Insert latest record
+        Logger.info('Inserting latest data to the online database.')
+        # Insert into DB
+        df.to_sql('predictions', con=engine, if_exists='replace', index=False)
+        Logger.info('Data uploaded to database.')
 
-    # Create upper and lower bounds from standard deviation of the data
-    df1 = predictions_df.assign(upper_std=lambda x: x[column] + std)
-    df1['lower_std'] = predictions_df[column].values - std
+    except:
+        Logger.exception('Could not log in to online database.')
 
-    # Initialize global figure that will be displayed on streamlit app.
-    global fig
-    fig = plt.figure(figsize=(20,10))
-    # Draw plot
-    plt.plot(previous_df[column].index[130:], previous_df[column].values[130:], color='green', label='Past')
-    plt.plot(predictions_df[column].index, predictions_df[column].values, color='Blue', label='Predictions')
-    plt.fill_between(x=df1.index, y1=df1.upper_std, y2=df1.lower_std, 
-    where= df1.upper_std > df1.lower_std, facecolor='purple', alpha=0.1, interpolate=True,
-                        label='Standard deviation')
-
-    # Set plot attributes
-    plt.xlabel('Months')
-    plt.ylabel('Average daily imports (measured in million)')
-    plt.title(f'Average number of {column} crude oil imports')
-    plt.legend()
-    plt.grid()
 
 
 # Start of workflow:
@@ -421,19 +393,7 @@ Logger.info('Model training process about to begin.')
 predictions = model_training(no_outliers)
 Logger.info('Model training process completed.')
 
-# STEP 6: Streamlit app
-Logger.info('Streamlit app process about to begin.')
-
-# Selectbox to select which type of oil to display
-option = st.selectbox('SELECT COLUMN DATA TO DISPLAY',
-    ('heavy_sour', 'heavy_sweet', 'light_sour', 'light_sweet', 'medium', 'total'))
-
-# call function which creates the plot to see.
-plot(no_outliers, predictions, option)
-
-# Display figure on webapp
-st.pyplot(fig=fig)
-
-# Display predictions dataframe to show exact values of predictions
-st.dataframe(predictions[['period',option]])
-Logger.info('Streamlit app process completed.')
+# STEP 6: Predictions upload
+Logger.info('Predictions upload process about to begin.')
+predictions_upload(predictions)
+Logger.info('Predictions upload process completed.')
