@@ -31,12 +31,12 @@ prestage_setup()
 
 # Import data from database
 st.cache_data   # Ensures that function only runs once and not for every user interaction
-def collect_data():
+def collect_data(engine):
     print('fetching data')
 
     # Connect to the database
     # Connect to the database
-    engine = create_engine("mysql+pymysql://{user}:{pw}@{host}/{db}".format(host=DB_HOSTNAME, db=DB_DATABASE, user=DB_USERNAME, pw=DB_PASSWORD))
+    engine = create_engine(engine)
         
 
     # Fetch all data
@@ -55,7 +55,7 @@ def collect_data():
     return past_data, predictions_data
 
 
-past_data, predictions_data = collect_data()
+past_data, predictions_data = collect_data("mysql+pymysql://{user}:{pw}@{host}/{db}".format(host=DB_HOSTNAME, db=DB_DATABASE, user=DB_USERNAME, pw=DB_PASSWORD))
 
 # Transform list of data retrieved from database to dataframe
 Logger.info('Transforming data to dataframe.')
