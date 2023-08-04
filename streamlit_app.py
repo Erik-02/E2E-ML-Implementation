@@ -54,7 +54,7 @@ def collect_data():
     # Return the 2 dataframes containing our retrieved data from database
     return past_data, predictions_data
 
-st.cache_data   # Ensures that function only runs once and not for every user interaction
+
 past_data, predictions_data = collect_data()
 
 # Transform list of data retrieved from database to dataframe
