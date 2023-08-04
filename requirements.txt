@@ -9,4 +9,4 @@ wandb
 plotly
 streamlit
 sqlalchemy
-MySQL-python
+mysql-connector-python
