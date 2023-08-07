@@ -31,7 +31,7 @@ prestage_setup()
 
 # Import data from database
 # Ensures that function only runs once and not for every user interaction
-st.cache_data   
+@st.cache_data   
 def collect_data():
     print('fetching data')
 
