@@ -30,10 +30,9 @@ def prestage_setup():
 prestage_setup()
 
 # Import data from database
-# Ensures that function only runs once and not for every user interaction
+# # Ensures that function only runs once and not for every user interaction
 @st.cache_data   
 def collect_data():
-    print('fetching data')
 
     # Connect to the database
     # Connect to the database
@@ -56,6 +55,9 @@ def collect_data():
     return past_data, predictions_data
 
 
+
+
+# Call function to retrieve data from database
 past_data, predictions_data = collect_data()
 
 # Transform list of data retrieved from database to dataframe
@@ -63,13 +65,11 @@ Logger.info('Transforming data to dataframe.')
 # Drop duplicates
 past_data.drop_duplicates(subset=['period'], inplace=True)
 
-# Transform list of data retrieved from database to dataframe
-Logger.info('Transforming data to dataframe.')
 # Drop duplicates
 predictions_data.drop_duplicates(subset=['period'], inplace=True)
 predictions_data.index = [i + past_data.shape[0] for i in predictions_data.index]
 
-
+# Create a plotting function with user selected column
 def plot(previous_df, predictions_df, column):
 
     # Get standard deviation of the predictions
